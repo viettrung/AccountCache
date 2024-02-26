@@ -44,6 +44,9 @@ public class AccountCacheImplTest {
     @Test
     public void testGetTop3AccountsByBalance() {
         AccountCache cache = new AccountCacheImpl(10);
+
+        assertEquals(0, cache.getTop3AccountsByBalance().size());
+
         Account account1 = new Account(1, 100);
         Account account2 = new Account(2, 200);
         Account account3 = new Account(3, 300);
@@ -67,6 +70,9 @@ public class AccountCacheImplTest {
     @Test
     public void testGetTop3AccountsByBalanceWhenCapacityLessThan3() {
         AccountCache cache = new AccountCacheImpl(2);
+
+        assertEquals(0, cache.getTop3AccountsByBalance().size());
+
         Account account1 = new Account(1, 100);
         Account account2 = new Account(2, 200);
         Account account3 = new Account(3, 300);
