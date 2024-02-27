@@ -3,6 +3,8 @@ package com.aurora.accounts;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Consumer;
 
 /**
@@ -16,6 +18,7 @@ public class AccountCacheImpl implements AccountCache {
     private final ConcurrentLinkedDeque<Long> accessQueue;
     private final Set<Consumer<Account>> listeners;
     private final AtomicInteger hitCount;
+    private final ReadWriteLock lock;
 
     /**
      * Constructs an {@code AccountCacheImpl} with the specified capacity.
@@ -28,16 +31,22 @@ public class AccountCacheImpl implements AccountCache {
         this.accessQueue = new ConcurrentLinkedDeque<>();
         this.listeners = new CopyOnWriteArraySet<>();
         this.hitCount = new AtomicInteger(0);
+        this.lock = new ReentrantReadWriteLock();
     }
 
     @Override
     public Account getAccountById(long id) {
-        Account account = cache.get(id);
-        if (account != null) {
-            updateAccessQueue(id);
-            hitCount.incrementAndGet();
+        lock.readLock().lock();
+        try {
+            Account account = cache.get(id);
+            if (account != null) {
+                updateAccessQueue(id);
+                hitCount.incrementAndGet();
+            }
+            return account;
+        } finally {
+            lock.readLock().unlock();
         }
-        return account;
     }
 
     @Override
@@ -47,9 +56,14 @@ public class AccountCacheImpl implements AccountCache {
 
     @Override
     public List<Account> getTop3AccountsByBalance() {
-        List<Account> sortedAccounts = new ArrayList<>(cache.values());
-        sortedAccounts.sort(Comparator.comparingLong(Account::getBalance).reversed());
-        return sortedAccounts.subList(0, Math.min(3, sortedAccounts.size()));
+        lock.readLock().lock();
+        try {
+            List<Account> sortedAccounts = new ArrayList<>(cache.values());
+            sortedAccounts.sort(Comparator.comparingLong(Account::getBalance).reversed());
+            return sortedAccounts.subList(0, Math.min(3, sortedAccounts.size()));
+        } finally {
+            lock.readLock().unlock();
+        }
     }
 
     @Override
@@ -59,14 +73,19 @@ public class AccountCacheImpl implements AccountCache {
 
     @Override
     public void putAccount(Account account) {
-        listeners.forEach(listener -> listener.accept(account));
+        lock.writeLock().lock();
+        try {
+            listeners.forEach(listener -> listener.accept(account));
 
-        if (cache.size() >= capacity) {
-            evictLeastRecentlyUsed();
+            if (cache.size() >= capacity) {
+                evictLeastRecentlyUsed();
+            }
+
+            cache.put(account.getId(), account);
+            updateAccessQueue(account.getId());
+        } finally {
+            lock.writeLock().unlock();
         }
-
-        cache.put(account.getId(), account);
-        updateAccessQueue(account.getId());
     }
 
     /**
