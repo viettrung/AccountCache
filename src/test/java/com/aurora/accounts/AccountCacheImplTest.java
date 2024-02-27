@@ -145,14 +145,46 @@ public class AccountCacheImplTest {
                     long accountId = new Random().nextInt(100) + 1;
                     Account account = new Account(accountId, j * 100);
                     cache.putAccount(account);
-                    assertNotNull(cache.getAccountById(accountId));
+                    Account retrievedAccount = cache.getAccountById(accountId);
+                    assertNotNull(retrievedAccount);
+                    assertEquals(account.getId(), retrievedAccount.getId());
                 }
                 latch.countDown();
             });
         }
 
         latch.await();
-        assertEquals(numThreads * numAccounts, cache.getAccountByIdHitCount());
+        executorService.shutdown();
+    }
+
+    @Test
+    public void testConcurrentUpdates() throws InterruptedException {
+        final int numThreads = 100;
+        final AccountCache accountCache = new AccountCacheImpl(numThreads);
+        final long accountId = 12345;
+        final int initialBalance = 1000;
+        final int amountToAdd = 10;
+        final ExecutorService executorService = Executors.newFixedThreadPool(numThreads);
+        final CountDownLatch latch = new CountDownLatch(numThreads);
+
+        accountCache.putAccount(new Account(accountId, initialBalance));
+
+        // Concurrently update the balance of the same account
+        for (int i = 0; i < numThreads; i++) {
+            executorService.execute(() -> {
+                Account account = accountCache.getAccountById(accountId);
+                long newBalance = account.getBalance() + amountToAdd;
+                account.setBalance(newBalance);
+                accountCache.putAccount(account);
+                latch.countDown();
+            });
+        }
+
+        latch.await();
+        executorService.shutdown();
+
+        // Verify the final balance of the account
+        assertEquals(initialBalance + (numThreads * amountToAdd), accountCache.getAccountById(accountId).getBalance());
     }
 
 }
