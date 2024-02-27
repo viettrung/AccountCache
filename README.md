@@ -17,7 +17,7 @@ for putting, getting, and subscribing to account updates.
 
 Before getting started, ensure that you have the following tools installed:
 
-- Java Development Kit (JDK) version 8 or higher
+- Java Development Kit (JDK) version 11 or higher
 - Apache Maven (for building and managing dependencies)
 
 ### Build the project
