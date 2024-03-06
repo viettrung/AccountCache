@@ -52,7 +52,7 @@ public class AccountCacheImpl implements AccountCache {
 
     @Override
     public void subscribeForAccountUpdates(Consumer<Account> listener) {
-        if (listener == null) throw new IllegalArgumentException("The listener cannot be null");
+        if (listener == null) throw new NullPointerException();
         listeners.add(listener);
     }
 
