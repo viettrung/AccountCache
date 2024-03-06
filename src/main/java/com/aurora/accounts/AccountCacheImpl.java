@@ -51,6 +51,7 @@ public class AccountCacheImpl implements AccountCache {
 
     @Override
     public void subscribeForAccountUpdates(Consumer<Account> listener) {
+        if (listener == null) throw new IllegalArgumentException("The listener cannot be null");
         listeners.add(listener);
     }
 
@@ -75,8 +76,6 @@ public class AccountCacheImpl implements AccountCache {
     public void putAccount(Account account) {
         lock.writeLock().lock();
         try {
-            listeners.forEach(listener -> listener.accept(account));
-
             if (cache.size() >= capacity) {
                 evictLeastRecentlyUsed();
             }
@@ -85,6 +84,7 @@ public class AccountCacheImpl implements AccountCache {
             updateAccessQueue(account.getId());
         } finally {
             lock.writeLock().unlock();
+            listeners.forEach(listener -> listener.accept(account));
         }
     }
 
