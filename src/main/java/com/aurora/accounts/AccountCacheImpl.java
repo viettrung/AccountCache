@@ -6,6 +6,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 /**
  * An implementation of the {@link AccountCache} interface using a concurrent
@@ -14,7 +15,7 @@ import java.util.function.Consumer;
  */
 public class AccountCacheImpl implements AccountCache {
     private final int capacity;
-    private final ConcurrentMap<Long, Account> cache;
+    private final ConcurrentSkipListMap<Long, Account> cache;
     private final ConcurrentLinkedDeque<Long> accessQueue;
     private final Set<Consumer<Account>> listeners;
     private final AtomicInteger hitCount;
@@ -27,7 +28,7 @@ public class AccountCacheImpl implements AccountCache {
      */
     public AccountCacheImpl(int capacity) {
         this.capacity = capacity;
-        this.cache = new ConcurrentHashMap<>();
+        this.cache = new ConcurrentSkipListMap<>();
         this.accessQueue = new ConcurrentLinkedDeque<>();
         this.listeners = new CopyOnWriteArraySet<>();
         this.hitCount = new AtomicInteger(0);
@@ -59,9 +60,9 @@ public class AccountCacheImpl implements AccountCache {
     public List<Account> getTop3AccountsByBalance() {
         lock.readLock().lock();
         try {
-            List<Account> sortedAccounts = new ArrayList<>(cache.values());
-            sortedAccounts.sort(Comparator.comparingLong(Account::getBalance).reversed());
-            return sortedAccounts.subList(0, Math.min(3, sortedAccounts.size()));
+            return cache.descendingMap().values().stream()
+                    .limit(3)
+                    .collect(Collectors.toList());
         } finally {
             lock.readLock().unlock();
         }

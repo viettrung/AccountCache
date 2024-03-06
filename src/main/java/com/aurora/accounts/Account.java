@@ -2,7 +2,7 @@ package com.aurora.accounts;
 
 import java.util.concurrent.atomic.AtomicLong;
 
-public final class Account {
+public final class Account implements Comparable<Account>{
     private final long id;
     private AtomicLong balance;
 
@@ -24,6 +24,11 @@ public final class Account {
     }
 
     @Override
+    public int compareTo(Account other) {
+        return Long.compare(this.getBalance(), other.getBalance());
+    }
+
+    @Override
     public int hashCode() {
         int result = 31 + (int) (id ^ (id >>> 32));
         return 31 * result + (int) (balance.get() ^ (balance.get() >>> 32));
@@ -34,6 +39,6 @@ public final class Account {
         if (this == obj) return true;
         if (!(obj instanceof Account)) return false;
         Account other = (Account) obj;
-        return id == other.id && balance == other.balance;
+        return id == other.id && balance.get() == other.balance.get();
     }
 }
